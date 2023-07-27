@@ -9,7 +9,7 @@ the need for a home automation server installation. :)
 
 ## How To Use
 
-Copy `config.h.default` to `config.h` and edit `config.h` according to your needs:
+Edit `config.h` according to your needs:
 - WiFi credentials must be adjusted here;
 - Hichi network address may also need adjusting;
 - follow the directions in the DROPBOX section to add logging;
