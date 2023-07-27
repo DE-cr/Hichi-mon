@@ -44,6 +44,7 @@ Hichi unit, and the highest power reading displayed in the chart.
 Example for a ten minutes configuration:
 
 ![10min](10min.png)
+
 Example for a 24 hours configuration:
 
 ![24h](24h.png)
