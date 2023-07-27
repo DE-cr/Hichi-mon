@@ -102,7 +102,7 @@ Example output:
 
 ![GNUplot](GNUplot.png)
 
-(If you have no power generator (e.g. PhotoVoltaics) in your house, and therefore no
+(If you have no power generator (e.g. PhotoVoltaics) in your household, and therefore no
 negative power readings, the "Energy (paid for)" curve will equal the "Energy (net demand)" curve, and "Energy (PV excess)" will be a flat line.
 Just adjust `hichi-mon.sh` according to your needs.)
 
