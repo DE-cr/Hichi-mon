@@ -15,7 +15,7 @@ Edit `config.h` according to your needs:
 - follow the directions in the DROPBOX section to add logging;
 - check if anything else needs adjusting.
 
-Then compile `Hichi-mon.ino` and install it on your esp32 to be used as a monitor.
+Then compile `Hichi-mon.ino` and install it on your esp32 to be used as a power monitor.
 
 If all goes well, you should see data from your Hichi unit displayed
 on the Hichi-mon unit.
