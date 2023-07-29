@@ -2,7 +2,7 @@
 
 ![24h](24h.png)
 
-Monitoring and logging power consumption, as
+Monitoring and logging electrical power consumption, as
 read from a smart meter via a [Hichi unit](https://www.ebay.de/itm/314321775948),
 using an esp32 board (optionally) fitted with an ssd1306 display - without
 the need for a home automation server installation. :)
