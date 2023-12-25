@@ -2,20 +2,19 @@
 
 ![24h](24h.png)
 
-Monitoring and logging electrical power consumption, as
-read from a smart meter via a [Hichi unit](https://www.ebay.de/itm/314321775948),
+Monitoring and logging power consumption, as
+read from a smartmeter via a [Hichi unit](https://www.ebay.de/itm/314321775948),
 using an esp32 board (optionally) fitted with an ssd1306 display - without
 the need for a home automation server installation. :)
 
 ## How To Use
 
-Edit `config.h` according to your needs:
+Copy `config.h.default` to `config.h` and edit `config.h` according to your needs:
 - WiFi credentials must be adjusted here;
 - Hichi network address may also need adjusting;
 - follow the directions in the DROPBOX section to add logging;
 - check if anything else needs adjusting.
-
-Then compile `Hichi-mon.ino` and install it on your esp32 to be used as a power monitor.
+Then compile `Hichi-mon.ino` and install it on your esp32 to be used as a monitor.
 
 If all goes well, you should see data from your Hichi unit displayed
 on the Hichi-mon unit.
@@ -44,7 +43,6 @@ Hichi unit, and the highest power reading displayed in the chart.
 Example for a ten minutes configuration:
 
 ![10min](10min.png)
-
 Example for a 24 hours configuration:
 
 ![24h](24h.png)
@@ -104,7 +102,7 @@ Example output:
 
 ![GNUplot](GNUplot.png)
 
-(If you have no power generator (e.g. PhotoVoltaics) in your household, and therefore no
+(If you have no power generator (e.g. PhotoVoltaics) in your house, and therefore no
 negative power readings, the "Energy (paid for)" curve will equal the "Energy (net demand)" curve, and "Energy (PV excess)" will be a flat line.
 Just adjust `hichi-mon.sh` according to your needs.)
 
@@ -133,5 +131,4 @@ Hichi-mon has been derived from my [BSBmonCR](https://github.com/DE-cr/BSBmonCR)
 
 ### Known Issues
 
-* The NTPClient library used is broken, but the workaround implemented
-  here seems to suffice.
+* (none)

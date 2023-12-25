@@ -4,13 +4,11 @@
  * (file Hichi-mon.ino)
 */
 
-#include <Timezone.h>
-
 //-- config:
 
 #include "config.h"
 
-#define HichiMonVersion "0.1.0"
+#define HichiMonVersion "0.1.1"
 #define HELLO "-- Welcome to Hichi-mon v" HichiMonVersion "! --"
 
 #ifdef FULL_DAY_DISPLAY
@@ -28,15 +26,11 @@
 
 #define OTA_UPDATE_PORT 8080
 
-// library default of 60s violates pool.ntp.org terms of service!:
-#define NTP_UPDATE_INTERVAL ( 60L * 60 * 1000 ) // [ms]
-
 //-- libs:
 
 #include <U8g2lib.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
-#include "NTPClientFix.h"
 #include <WebServer.h>
 #include <Update.h>
 
@@ -56,8 +50,6 @@ typedef struct {
 t_log_data log_data[ DATA_SIZE ];
 int prev_pos = -1;
 
-WiFiUDP ntpUDP;
-NTPClient timeClient( ntpUDP );  // offset to UTC handled with Timezone library functions, to include daylight savings time
 char time_now[12], time_prev[12];
 char date_now[11], date_prev[11];
 char date_h_now[14], date_h_prev[14];
@@ -81,8 +73,6 @@ const char* update_server_index =
   "<input type='file' name='update'>"
   "<input type='submit' value='Update'>"
   "</form>";
-
-Timezone tz(DST, STT);
 
 //-- code:
 
@@ -169,28 +159,6 @@ unsigned char* compile_bitmap( ) {
       *pbuf++ = ~v;  // black on white looks better in BMP
     }
   return buf;
-}
-
-int leapyear( int year ) {
-  return !(year % 4) && (year % 100 || !(year % 400)) ? 1 : 0;
-}
-
-char* epoch2date( unsigned long epoch, char* date ) {
-  // date must be at least char[11]!
-  epoch /= 24 * 60 * 60;
-  int year = 1970;
-  while ( epoch >= 365 + leapyear( year ) )
-    epoch -= 365 + leapyear( year ++ );
-  int days_in_month[] =
-    //Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov
-  { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 };
-  days_in_month[ 1 ] += leapyear( year ); // fix Feb?
-  int* m_days = days_in_month;
-  int month;
-  for ( month = 0; epoch >= *m_days; ++ month )
-    epoch -= *( m_days ++);
-  sprintf( date, "%04d-%02d-%02d", year, month + 1, (int)epoch + 1 );
-  return date;
 }
 
 bool updateDropboxToken( ) {
@@ -363,15 +331,10 @@ void init_ota_update( ) {
 }
 
 void update_time( ) {
-  timeClient.update( );
-  NTPClientFix( timeClient );
-  time_t t_orig = timeClient.getEpochTime( );
-  time_t t = tz.toLocal( t_orig );
-  int hms = t % ( 24 * 60 * 60 );  // drop date -> h:m:s
-  int s = hms % 60;
-  int hm = hms / 60;  // drop seconds
-  sprintf( time_now, "%02d:%02d:%02d", hm / 60, hm % 60, s );
-  epoch2date( t, date_now );
+  time_t now;
+  if ( time( &now ) < 50 * 365ul * 24 * 60 * 60 ) return;  // before ca. 2020?
+  strftime( date_now, 11, "%F", localtime( &now ) );
+  strftime( time_now, 12, "%T", localtime( &now ) );
 }
 
 void setup( ) {
@@ -386,11 +349,12 @@ void setup( ) {
   WiFi.mode( WIFI_STA );
   WiFi.begin( MY_SSID, MY_PASSWORD );
   server.begin( );
-  timeClient.begin( );
   *date_h_prev = *date_prev = *time_prev = 0;
   *dropbox_access_token = 0;
   init_ota_update( );
-  timeClient.setUpdateInterval( NTP_UPDATE_INTERVAL );
+  configTime( 0, 0, NTP_SERVER );
+  setenv( "TZ", LOCAL_TIMEZONE, 1 );
+  tzset( );
   Serial.println( "setup() done." );
 }
 
@@ -407,6 +371,7 @@ void loop( ) {
   }
   update_time( );
   if ( *date_now != '2' ) return;
+  if ( !*time_now ) return;
   if ( !strcmp( time_now, time_prev ) ) return;
   static int power = 0;
   power_update( &power );  // (try to) read current power consumption from HICHI_URL
