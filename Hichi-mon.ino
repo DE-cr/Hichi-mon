@@ -8,7 +8,7 @@
 
 #include "config.h"
 
-#define HichiMonVersion "0.1.1"
+#define HichiMonVersion "0.1.2"
 #define HELLO "-- Welcome to Hichi-mon v" HichiMonVersion "! --"
 
 #ifdef FULL_DAY_DISPLAY
@@ -21,8 +21,6 @@
 #define OLED_ROTATION U8G2_R3
 #define OLED_FONT u8g2_font_ncenR08_tf // u8g2_font_helvR12_te
 #define TEMP_FMT "%.1f"
-
-#define UPDATE_DROPBOX_TOKEN_AT ":17" // when hh:mm ends like this
 
 #define OTA_UPDATE_PORT 8080
 
@@ -63,7 +61,7 @@ unsigned long log_size = 0;
 #define DROPBOX_CONTENT_SERVER "content.dropboxapi.com"
 #define CHUNK_SIZE (8*1024)
 #define TOKEN_INTRO "{\"access_token\": \""
-#define MAX_TOKEN_LENGTH 150 // the ones I've seen are 139 chars each
+#define MAX_TOKEN_LENGTH 2048
 char dropbox_access_token[ MAX_TOKEN_LENGTH + 1 ];
 bool access_token_ok = false;
 
@@ -196,6 +194,8 @@ bool updateDropboxToken( ) {
       for ( int n = 0;  *p_line && *p_line != '"' && n < MAX_TOKEN_LENGTH;  ++n )
         *p_token++ = *p_line++;
       *p_token = 0;
+      Serial.print( "token:" );
+      Serial.println( dropbox_access_token );
     } else {
       Serial.print( ':' );
       Serial.println( line );
@@ -212,7 +212,6 @@ bool readFromDropbox( const char* path, const char* basename, const char* extens
 #ifndef USE_DROPBOX
   return false;
 #endif
-  if ( !access_token_ok ) return false;
   bool success = false;
   for (;;) {
     String fn = String( path ) + basename + extension;
@@ -251,7 +250,9 @@ bool readFromDropbox( const char* path, const char* basename, const char* extens
       Serial.println( data_size );
     } else Serial.println( "connectFailed" );
     if ( success || !(retries--) ) return success;
-    delay( 1000 );
+    delay( 100 );
+    updateDropboxToken( );
+    delay( 100 );
   }
 }
 
@@ -260,7 +261,6 @@ bool send2dropbox( const char* path, const char* basename, const char* extension
 #ifndef USE_DROPBOX
   return false;
 #endif
-  if ( !access_token_ok ) return false;
   bool success = false;
   for (;;) {
     String fn = String( path ) + basename + extension;
@@ -290,11 +290,17 @@ bool send2dropbox( const char* path, const char* basename, const char* extension
       String response = client.connected() ? client.readStringUntil('\n') : "diconnected";
       Serial.println( response );
       success = response == "HTTP/1.1 200 OK\r";
-      while ( client.available() ) client.read();
+      while ( client.available() ) {
+        char c = client.read();
+        if ( !success ) Serial.print( c );
+      }
+      if ( !success ) Serial.println( );
       client.stop( );
     } else Serial.println( "connectFailed" );
     if ( success || !(retries--) ) return success;
-    delay( 1000 );
+    delay( 100 );
+    updateDropboxToken( );
+    delay( 100 );
   }
 }
 
@@ -376,12 +382,6 @@ void loop( ) {
   static int power = 0;
   power_update( &power );  // (try to) read current power consumption from HICHI_URL
   update_log_data( &log_data[pos], power );
-  if ( !access_token_ok ||
-       !strncmp( time_now + 5 - strlen( UPDATE_DROPBOX_TOKEN_AT ),
-                 UPDATE_DROPBOX_TOKEN_AT,
-                 strlen( UPDATE_DROPBOX_TOKEN_AT ) ) )
-    // Dropbox access tokens usually expire after 4h, but this is easier for us to handle
-    access_token_ok = updateDropboxToken( );
   strcpy( date_h_now, date_now );
   strcat( date_h_now, "_" );
   strncat( date_h_now, time_now, 2 );
@@ -391,20 +391,20 @@ void loop( ) {
     if ( ! strncmp( time_now + 5 - strlen( DROPBOX_BMP_WRITE_TIME_PATTERN ),
                     DROPBOX_BMP_WRITE_TIME_PATTERN,
                     strlen( DROPBOX_BMP_WRITE_TIME_PATTERN ) ) )
-      send2dropbox( DROPBOX_PATH, "hichi-mon", ".bmp", compile_bitmap( ), BMP_SIZE, 0 );
+      send2dropbox( DROPBOX_PATH, "hichi-mon", ".bmp", compile_bitmap( ), BMP_SIZE, 1 );
     if ( new_hm &&
          ( new_day_h ||
            ! strncmp( time_now + 3, "00", 2 ) ||  // new hour?
            ! strncmp( time_now + 5 - strlen( DROPBOX_CSV_WRITE_TIME_PATTERN ),
                       DROPBOX_CSV_WRITE_TIME_PATTERN,
                       strlen( DROPBOX_CSV_WRITE_TIME_PATTERN ) ) ) )
-      send2dropbox( DROPBOX_PATH, date_h_prev, ".csv", (byte*)complete_log, log_size, new_day_h ? 2 : 0 );
+      send2dropbox( DROPBOX_PATH, date_h_prev, ".csv", (byte*)complete_log, log_size, new_day_h ? 2 : 1 );
   } // log_size && new_hm
   if ( new_day_h ) {
     Serial.println( date_h_now );
     log_size = *complete_log = 0; // clear log for new day (even if the last send2dropbox failed!)
     // any data to restore from dropbox?:
-    readFromDropbox( DROPBOX_PATH, date_h_now, ".csv", (byte*)complete_log, log_size, MAX_LOG_SIZE, 0 );
+    readFromDropbox( DROPBOX_PATH, date_h_now, ".csv", (byte*)complete_log, log_size, MAX_LOG_SIZE, 1 );
   }
   sprintf( recent_line, "%s %d\n", time_now, power );
   Serial.print( recent_line );
